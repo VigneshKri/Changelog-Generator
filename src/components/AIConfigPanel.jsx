@@ -280,6 +280,19 @@ export default function AIConfigPanel({ aiConfig, onConfigChange }) {
               {/* ===== OLLAMA-SPECIFIC UI ===== */}
               {aiConfig.provider === 'ollama' && (
                 <div className="ai-provider-section ollama-section">
+                  {/* Warn when running on a hosted site (non-localhost) */}
+                  {typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && (
+                    <div className="ai-warning" style={{ marginBottom: 10 }}>
+                      ⚠️ <strong>Ollama only works when this app is running on localhost.</strong><br />
+                      Your browser blocks requests from hosted sites to <code>localhost:11434</code> (mixed content / CORS).<br />
+                      <strong>Options:</strong>
+                      <ul style={{ margin: '6px 0 0 18px', padding: 0, fontSize: 12 }}>
+                        <li>Run this app locally: <code>npm run dev</code></li>
+                        <li>Or use a cloud AI provider (Gemini, Groq) — they work everywhere</li>
+                      </ul>
+                    </div>
+                  )}
+
                   <div className="ai-config-actions ollama-status-row">
                     <button
                       className="btn btn-secondary btn-sm"

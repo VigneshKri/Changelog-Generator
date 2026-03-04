@@ -36,14 +36,14 @@ export const CATEGORIES = {
     emoji: '🎉',
     title: 'New Features',
     color: 'features',
-    keywords: ['feat', 'feature', 'add', 'added', 'new', 'implement', 'introduce'],
+    keywords: ['feat', 'feature', 'add', 'added', 'new', 'implement', 'introduce', 'create', 'support', 'enable', 'launch'],
   },
   bugfixes: {
     key: 'bugfixes',
     emoji: '🐛',
     title: 'Bug Fixes',
     color: 'bugfixes',
-    keywords: ['fix', 'bug', 'bugfix', 'patch', 'resolve', 'fixed', 'repair', 'correct'],
+    keywords: ['fix', 'bug', 'bugfix', 'patch', 'resolve', 'fixed', 'repair', 'correct', 'hotfix', 'handle'],
   },
   performance: {
     key: 'performance',
@@ -71,7 +71,7 @@ export const CATEGORIES = {
     emoji: '♻️',
     title: 'Code Improvements',
     color: 'refactor',
-    keywords: ['refactor', 'restructure', 'clean', 'cleanup', 'rewrite', 'simplify', 'improve'],
+    keywords: ['refactor', 'restructure', 'clean', 'cleanup', 'rewrite', 'simplify', 'improve', 'enhance', 'modernize'],
   },
   chores: {
     key: 'chores',
@@ -107,8 +107,11 @@ export function parseCommit(raw) {
 
   for (const [, cat] of Object.entries(CATEGORIES)) {
     for (const kw of cat.keywords) {
-      // Use word-boundary matching to avoid false positives (e.g., 'ci' in 'specification')
-      const kwRegex = new RegExp(`\\b${kw}\\b`, 'i');
+      // For short keywords (<=2 chars like 'ci', 'cd'), use exact word boundary
+      // For longer keywords, allow word variations (e.g., 'update' matches 'updated', 'updating')
+      const kwRegex = kw.length <= 2
+        ? new RegExp(`\\b${kw}\\b`, 'i')
+        : new RegExp(`\\b${kw}\\w*\\b`, 'i');
       if (lowerMsg.startsWith(kw + ' ') || lowerMsg.startsWith(kw + ':') || kwRegex.test(lowerMsg)) {
         return {
           raw: message,
@@ -139,9 +142,37 @@ export function categorizeCommit(parsed) {
 
   const type = parsed.type.toLowerCase();
 
+  // Exact keyword match first
   for (const [catKey, cat] of Object.entries(CATEGORIES)) {
     if (cat.keywords.includes(type)) {
       return catKey;
+    }
+  }
+
+  // Fuzzy match: check if the type starts with any keyword (handles past tense, etc.)
+  for (const [catKey, cat] of Object.entries(CATEGORIES)) {
+    for (const kw of cat.keywords) {
+      if (kw.length >= 3 && type.startsWith(kw)) {
+        return catKey;
+      }
+    }
+  }
+
+  // Last resort: scan the description for category signals
+  if (parsed.description) {
+    const desc = parsed.description.toLowerCase();
+    // Check high-priority categories first (features, bugfixes) before chores
+    const priorityOrder = ['features', 'bugfixes', 'performance', 'breaking', 'docs', 'refactor', 'chores'];
+    for (const catKey of priorityOrder) {
+      const cat = CATEGORIES[catKey];
+      for (const kw of cat.keywords) {
+        const kwRegex = kw.length <= 2
+          ? new RegExp(`\\b${kw}\\b`, 'i')
+          : new RegExp(`\\b${kw}\\w*\\b`, 'i');
+        if (kwRegex.test(desc)) {
+          return catKey;
+        }
+      }
     }
   }
 

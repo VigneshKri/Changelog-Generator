@@ -57,6 +57,7 @@ function App() {
   const [error, setError] = useState(null);
   const [repoInfo, setRepoInfo] = useState(null);
   const [showResults, setShowResults] = useState(false);
+  const [saveMessage, setSaveMessage] = useState(null);
   const rawCommitTextRef = useRef('');
   const [aiConfig, setAiConfig] = useState(loadAIConfig());
   const [activeTab, setActiveTab] = useState('generator');
@@ -157,24 +158,6 @@ function App() {
       setGrouped(categorized);
       setCategoryOrder(Object.keys(categorized));
       setShowResults(true);
-
-      // Save to history
-      const md = generateMarkdown(categorized, config.version, config.date, config.showOriginal, config.audience);
-      const categories = {};
-      for (const [k, v] of Object.entries(categorized)) {
-        categories[k] = v.length;
-      }
-      addToHistory({
-        version: config.version,
-        tone: config.tone,
-        commitCount: parsed.length,
-        repoName: repoInfoData?.name || null,
-        categories,
-        markdown: md,
-        rawText: commitText,
-        grouped: categorized,
-        commits: parsed,
-      });
 
       setLoading(false);
     } catch (err) {
@@ -279,12 +262,47 @@ function App() {
     setShowResults(false);
     setRepoInfo(null);
     setError(null);
+    setSaveMessage(null);
     rawCommitTextRef.current = '';
   };
 
+  // Save to history (explicit, requires version)
+  const handleSaveToHistory = useCallback(() => {
+    if (!config.version || !config.version.trim()) {
+      setSaveMessage({ type: 'error', text: 'Please enter a version number before saving.' });
+      return;
+    }
+    if (!grouped || commits.length === 0) return;
+
+    const md = generateMarkdown(grouped, config.version, config.date, config.showOriginal, config.audience);
+    const categories = {};
+    for (const [k, v] of Object.entries(grouped)) {
+      categories[k] = v.length;
+    }
+    addToHistory({
+      version: config.version.trim(),
+      tone: config.tone,
+      commitCount: commits.length,
+      repoName: repoInfo?.name || null,
+      categories,
+      markdown: md,
+      rawText: rawCommitTextRef.current,
+      grouped,
+      commits,
+    });
+    setSaveMessage({ type: 'success', text: `v${config.version.trim()} saved to history!` });
+    setTimeout(() => setSaveMessage(null), 3000);
+  }, [config, grouped, commits, repoInfo]);
+
   return (
     <div className="app">
-      <Header activeTab={activeTab} onTabChange={setActiveTab} theme={theme} onToggleTheme={toggleTheme} />
+      <Header
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onLogoClick={() => { setActiveTab('generator'); handleReset(); }}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
       <main className="main-content">
         {activeTab === 'generator' && !showResults && <Hero />}
 
@@ -394,6 +412,33 @@ function App() {
               stats={stats}
               repoInfo={repoInfo}
             />
+
+            {/* Save to History */}
+            <div className="save-history-section" style={{ marginTop: 16, padding: '16px 20px', background: 'var(--bg-secondary)', borderRadius: 12, border: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleSaveToHistory}
+                  style={{ fontWeight: 600 }}
+                >
+                  💾 Save to History
+                </button>
+                {!config.version && (
+                  <span style={{ color: 'var(--warning)', fontSize: 13 }}>
+                    ⚠️ Version number is required — set it in Output Settings above
+                  </span>
+                )}
+                {saveMessage && (
+                  <span style={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: saveMessage.type === 'success' ? 'var(--success)' : 'var(--error)',
+                  }}>
+                    {saveMessage.type === 'success' ? '✅' : '❌'} {saveMessage.text}
+                  </span>
+                )}
+              </div>
+            </div>
           </>
         )}
         </>

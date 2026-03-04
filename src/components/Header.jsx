@@ -8,10 +8,15 @@ const TABS = [
   { key: 'analytics', label: 'Analytics' },
 ];
 
-export default function Header({ activeTab = 'generator', onTabChange, theme, onToggleTheme }) {
+export default function Header({ activeTab = 'generator', onTabChange, onLogoClick, theme, onToggleTheme }) {
   return (
     <header className="header">
-      <div className="header-left">
+      <div
+        className="header-left"
+        onClick={() => onLogoClick?.()}
+        style={{ cursor: 'pointer' }}
+        title="Go to Home"
+      >
         <span className="header-logo">📋</span>
         <div>
           <div className="header-title">Changelog Generator</div>
